@@ -196,6 +196,12 @@ namespace PedalTelemetry
                 // Temporarily stop HidReader to access devices
                 _hidReader?.Stop();
                 
+                if (_hidReader == null)
+                {
+                    MessageBox.Show("HID reader not available", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+                
                 var axes = _hidReader.GetAllAvailableAxes();
 
                 // Store current selections
@@ -293,7 +299,7 @@ namespace PedalTelemetry
             {
                 try
                 {
-                    Dispatcher.Invoke(() => RefreshDevices());
+                    Dispatcher.Invoke(() => RefreshAxes());
                     Dispatcher.Invoke(() => LoadDeviceSettings());
                 }
                 catch (Exception ex)
@@ -440,8 +446,6 @@ namespace PedalTelemetry
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            _detector?.StopDetection();
-            _detector?.Dispose();
             DialogResult = false;
             Close();
         }
