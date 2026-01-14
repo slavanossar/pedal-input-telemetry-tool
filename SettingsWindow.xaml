@@ -1,0 +1,187 @@
+<Window x:Class="PedalTelemetry.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings" Height="550" Width="600"
+        Background="{StaticResource BackgroundBrush}"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- HID Device Selection -->
+        <GroupBox Grid.Row="0" Header="HID Device Selection" 
+                 Foreground="White" 
+                 BorderBrush="#404040"
+                 Margin="0,0,0,10">
+            <StackPanel Margin="10">
+                <Button Content="Refresh Devices" 
+                       Click="RefreshDevices_Click"
+                       Width="120" Height="30"
+                       Margin="0,0,0,10"
+                       Background="#333333"
+                       BorderBrush="#555555"
+                       Foreground="White"
+                       Cursor="Hand"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,5">
+                    <Label Content="Clutch Device:" Width="120" Foreground="White"/>
+                    <ComboBox x:Name="ClutchCombo" Width="200" 
+                             Background="#2A2A2A" 
+                             Foreground="White"
+                             BorderBrush="#444444"
+                             Margin="0,0,5,0"/>
+                    <Button x:Name="ClutchDetectBtn" 
+                           Content="Detect" 
+                           Width="70" Height="25"
+                           Click="ClutchDetectBtn_Click"
+                           Background="#4CAF50"
+                           BorderBrush="#555555"
+                           Foreground="White"
+                           Cursor="Hand"
+                           Margin="0,0,0,0"/>
+                    <Label x:Name="ClutchDetectStatus" 
+                          Content="" 
+                          Width="120" 
+                          Margin="5,0,0,0"
+                          Foreground="#FFD700"
+                          FontSize="10"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,5">
+                    <Label Content="Brake Device:" Width="120" Foreground="White"/>
+                    <ComboBox x:Name="BrakeCombo" Width="200"
+                             Background="#2A2A2A" 
+                             Foreground="White"
+                             BorderBrush="#444444"
+                             Margin="0,0,5,0"/>
+                    <Button x:Name="BrakeDetectBtn" 
+                           Content="Detect" 
+                           Width="70" Height="25"
+                           Click="BrakeDetectBtn_Click"
+                           Background="#4CAF50"
+                           BorderBrush="#555555"
+                           Foreground="White"
+                           Cursor="Hand"
+                           Margin="0,0,0,0"/>
+                    <Label x:Name="BrakeDetectStatus" 
+                          Content="" 
+                          Width="120" 
+                          Margin="5,0,0,0"
+                          Foreground="#FFD700"
+                          FontSize="10"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,5">
+                    <Label Content="Throttle Device:" Width="120" Foreground="White"/>
+                    <ComboBox x:Name="ThrottleCombo" Width="200"
+                             Background="#2A2A2A" 
+                             Foreground="White"
+                             BorderBrush="#444444"
+                             Margin="0,0,5,0"/>
+                    <Button x:Name="ThrottleDetectBtn" 
+                           Content="Detect" 
+                           Width="70" Height="25"
+                           Click="ThrottleDetectBtn_Click"
+                           Background="#4CAF50"
+                           BorderBrush="#555555"
+                           Foreground="White"
+                           Cursor="Hand"
+                           Margin="0,0,0,0"/>
+                    <Label x:Name="ThrottleDetectStatus" 
+                          Content="" 
+                          Width="120" 
+                          Margin="5,0,0,0"
+                          Foreground="#FFD700"
+                          FontSize="10"/>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Display Settings -->
+        <GroupBox Grid.Row="1" Header="Display Settings" 
+                 Foreground="White" 
+                 BorderBrush="#404040"
+                 Margin="0,0,0,10">
+            <StackPanel Margin="10">
+                <StackPanel Orientation="Horizontal">
+                    <Label Content="Trace Duration:" Width="120" Foreground="White"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Slider x:Name="TraceSecondsSlider" 
+                               Minimum="1" Maximum="60" 
+                               Width="200" 
+                               ValueChanged="TraceSecondsSlider_ValueChanged"
+                               TickFrequency="1" IsSnapToTickEnabled="True"/>
+                        <Label x:Name="TraceSecondsLabel" 
+                              Content="10 seconds" 
+                              Width="100" 
+                              Margin="10,0,0,0"
+                              Foreground="White"/>
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Color Settings -->
+        <GroupBox Grid.Row="2" Header="Color Settings" 
+                 Foreground="White" 
+                 BorderBrush="#404040"
+                 Margin="0,0,0,10">
+            <StackPanel Margin="10">
+                <StackPanel Orientation="Horizontal" Margin="0,5">
+                    <Label Content="Clutch Color:" Width="120" Foreground="White"/>
+                    <Button x:Name="ClutchColorBtn" 
+                           Width="60" Height="30"
+                           Click="ClutchColorBtn_Click"
+                           Background="#FF6B6B"
+                           BorderBrush="#555555"
+                           Cursor="Hand"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,5">
+                    <Label Content="Brake Color:" Width="120" Foreground="White"/>
+                    <Button x:Name="BrakeColorBtn" 
+                           Width="60" Height="30"
+                           Click="BrakeColorBtn_Click"
+                           Background="#4ECDC4"
+                           BorderBrush="#555555"
+                           Cursor="Hand"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,5">
+                    <Label Content="Throttle Color:" Width="120" Foreground="White"/>
+                    <Button x:Name="ThrottleColorBtn" 
+                           Width="60" Height="30"
+                           Click="ThrottleColorBtn_Click"
+                           Background="#95E1D3"
+                           BorderBrush="#555555"
+                           Cursor="Hand"/>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" 
+                   HorizontalAlignment="Right" 
+                   Margin="0,10,0,0">
+            <Button Content="Cancel" 
+                   Click="CancelButton_Click"
+                   Width="80" Height="30"
+                   Margin="0,0,10,0"
+                   Background="#333333"
+                   BorderBrush="#555555"
+                   Foreground="White"
+                   Cursor="Hand"/>
+            <Button Content="Save" 
+                   Click="SaveButton_Click"
+                   Width="80" Height="30"
+                   Background="#4CAF50"
+                   BorderBrush="#555555"
+                   Foreground="White"
+                   Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+</Window>

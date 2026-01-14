@@ -1,0 +1,108 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0
+  workflow_dispatch:  # Allow manual triggering
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build -c Release --no-restore
+      
+    - name: Publish Windows x64
+      run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-build
+      
+    - name: Publish Windows x86
+      run: dotnet publish -c Release -r win-x86 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --no-build
+      
+    - name: Get version
+      id: get_version
+      run: |
+        if [[ "${{ github.ref_type }}" == "tag" ]]; then
+          VERSION="${{ github.ref_name }}"
+        else
+          VERSION="v${{ github.event.inputs.version }}"
+        fi
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+      shell: bash
+      
+    - name: Create release archive (x64)
+      id: create_x64_archive
+      run: |
+        $version = "${{ steps.get_version.outputs.VERSION }}"
+        $archiveName = "PedalTelemetry-$version-win-x64.zip"
+        Compress-Archive -Path "bin\Release\net8.0-windows\win-x64\publish\*" -DestinationPath $archiveName -Force
+        echo "ARCHIVE_X64=$archiveName" >> $env:GITHUB_OUTPUT
+        echo "Created: $archiveName"
+      shell: pwsh
+      
+    - name: Create release archive (x86)
+      id: create_x86_archive
+      run: |
+        $version = "${{ steps.get_version.outputs.VERSION }}"
+        $archiveName = "PedalTelemetry-$version-win-x86.zip"
+        Compress-Archive -Path "bin\Release\net8.0-windows\win-x86\publish\*" -DestinationPath $archiveName -Force
+        echo "ARCHIVE_X86=$archiveName" >> $env:GITHUB_OUTPUT
+        echo "Created: $archiveName"
+      shell: pwsh
+      
+    - name: Upload x64 artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PedalTelemetry-win-x64
+        path: PedalTelemetry-${{ steps.get_version.outputs.VERSION }}-win-x64.zip
+        
+    - name: Upload x86 artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PedalTelemetry-win-x86
+        path: PedalTelemetry-${{ steps.get_version.outputs.VERSION }}-win-x86.zip
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.get_version.outputs.VERSION }}
+        name: Release ${{ steps.get_version.outputs.VERSION }}
+        body: |
+          ## Pedal Input Telemetry Tool ${{ steps.get_version.outputs.VERSION }}
+          
+          ### Downloads
+          - **Windows x64**: PedalTelemetry-${{ steps.get_version.outputs.VERSION }}-win-x64.zip
+          - **Windows x86**: PedalTelemetry-${{ steps.get_version.outputs.VERSION }}-win-x86.zip
+          
+          ### Installation
+          1. Download the appropriate zip file for your system
+          2. Extract the zip file
+          3. Run `PedalTelemetry.exe`
+          
+          ### Changes
+          See commit history for details.
+        draft: false
+        prerelease: false
+        files: |
+          PedalTelemetry-${{ steps.get_version.outputs.VERSION }}-win-x64.zip
+          PedalTelemetry-${{ steps.get_version.outputs.VERSION }}-win-x86.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
