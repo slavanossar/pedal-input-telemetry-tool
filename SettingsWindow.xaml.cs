@@ -12,7 +12,7 @@ namespace PedalTelemetry
     public partial class SettingsWindow : Window
     {
         private readonly HidReader? _hidReader;
-        private Config _config;
+        private Config _config = new Config();
         private string _clutchColor = "#0085F1";
         private string _brakeColor = "#D80404";
         private string _throttleColor = "#09B61A";
@@ -502,8 +502,7 @@ namespace PedalTelemetry
                     {
                         statusLabel.Content = status;
                     });
-                },
-                timeoutSeconds: 10
+                }
             );
         }
 

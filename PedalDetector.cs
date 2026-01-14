@@ -27,7 +27,7 @@ namespace PedalTelemetry
             public int AxisIndex { get; set; }
         }
 
-        public void StartDetection(Action<DetectionResult?> onDetected, Action<string> onStatusUpdate, int timeoutSeconds = 10)
+        public void StartDetection(Action<DetectionResult?> onDetected, Action<string> onStatusUpdate)
         {
             if (_detecting)
             {
@@ -132,10 +132,9 @@ namespace PedalTelemetry
                         }
                     }
 
-                    var startTime = DateTime.Now;
-                    var threshold = 3000; // Lower threshold (about 9% of full range) for better sensitivity
+                    var threshold = 2000; // Lower threshold (about 6% of full range) for better sensitivity with pedals
 
-                    while (!token.IsCancellationRequested && (DateTime.Now - startTime).TotalSeconds < timeoutSeconds)
+                    while (!token.IsCancellationRequested)
                     {
                         foreach (var (guid, joystick) in _monitoredDevices)
                         {
@@ -159,7 +158,19 @@ namespace PedalTelemetry
                                             var deviceIndex = deviceList.FindIndex(d => d.Key == guid);
                                             var deviceName = devices[guid];
 
-                                            onStatusUpdate?.Invoke($"Detected: {deviceName} (Axis {axisIndex})");
+                                            // Show friendly axis name
+                                            string axisName = axisIndex switch
+                                            {
+                                                0 => "X",
+                                                1 => "Y",
+                                                2 => "Z",
+                                                3 => "X Rotation",
+                                                4 => "Y Rotation",
+                                                5 => "Z Rotation",
+                                                _ => $"Axis {axisIndex}"
+                                            };
+
+                                            onStatusUpdate?.Invoke($"Detected: {deviceName} ({axisName})");
                                             
                                             var result = new DetectionResult
                                             {
@@ -216,12 +227,8 @@ namespace PedalTelemetry
                         Thread.Sleep(50); // Check every 50ms
                     }
 
-                    // Timeout
-                    if (!token.IsCancellationRequested)
-                    {
-                        onStatusUpdate?.Invoke("Detection timeout. No pedal input detected.");
-                        onDetected?.Invoke(null);
-                    }
+                    // Loop exited - either detection succeeded (returned early) or was cancelled (user clicked Stop)
+                    // No need to call callbacks here as they're handled in the early return or cancellation
                 }
                 catch (Exception ex)
                 {

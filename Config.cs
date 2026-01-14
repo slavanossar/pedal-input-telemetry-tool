@@ -10,9 +10,9 @@ namespace PedalTelemetry
         public int? ClutchHid { get; set; }
         public int? BrakeHid { get; set; }
         public int? ThrottleHid { get; set; }
-        public int ClutchAxis { get; set; } = 2; // Default to Z-axis
-        public int BrakeAxis { get; set; } = 1; // Default to Y-axis
-        public int ThrottleAxis { get; set; } = 0; // Default to X-axis
+        public int ClutchAxis { get; set; } = 5; // Default to Z Rotation (RotationZ)
+        public int BrakeAxis { get; set; } = 4; // Default to Y Rotation (RotationY)
+        public int ThrottleAxis { get; set; } = 3; // Default to X Rotation (RotationX)
         public int TraceSeconds { get; set; } = 8;
         public Dictionary<string, string> Colors { get; set; } = new Dictionary<string, string>
         {
