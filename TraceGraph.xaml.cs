@@ -23,23 +23,25 @@ namespace PedalTelemetry
             InitializeComponent();
 
             // Create polylines for traces
+            // Colors will be set via UpdateColors() from config
+            // Using default config colors as fallback
             _clutchLine = new Polyline
             {
-                Stroke = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF6B6B")),
+                Stroke = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#0085F1")), // Default from Config
                 StrokeThickness = 2,
                 StrokeLineJoin = PenLineJoin.Round
             };
 
             _brakeLine = new Polyline
             {
-                Stroke = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4ECDC4")),
+                Stroke = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D80404")), // Default from Config
                 StrokeThickness = 2,
                 StrokeLineJoin = PenLineJoin.Round
             };
 
             _throttleLine = new Polyline
             {
-                Stroke = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#95E1D3")),
+                Stroke = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#09B61A")), // Default from Config
                 StrokeThickness = 2,
                 StrokeLineJoin = PenLineJoin.Round
             };
@@ -148,6 +150,9 @@ namespace PedalTelemetry
             _clutchLine.Stroke = new SolidColorBrush((Color)ColorConverter.ConvertFromString(clutchColor));
             _brakeLine.Stroke = new SolidColorBrush((Color)ColorConverter.ConvertFromString(brakeColor));
             _throttleLine.Stroke = new SolidColorBrush((Color)ColorConverter.ConvertFromString(throttleColor));
+            
+            // Force a redraw to show the new colors
+            InvalidateVisual();
         }
     }
 }

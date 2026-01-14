@@ -137,7 +137,7 @@
                     <Button x:Name="ClutchColorBtn" 
                            Width="60" Height="30"
                            Click="ClutchColorBtn_Click"
-                           Background="#FF6B6B"
+                           Background="#0085F1"
                            BorderBrush="#555555"
                            Cursor="Hand"/>
                 </StackPanel>
@@ -147,7 +147,7 @@
                     <Button x:Name="BrakeColorBtn" 
                            Width="60" Height="30"
                            Click="BrakeColorBtn_Click"
-                           Background="#4ECDC4"
+                           Background="#D80404"
                            BorderBrush="#555555"
                            Cursor="Hand"/>
                 </StackPanel>
@@ -157,7 +157,7 @@
                     <Button x:Name="ThrottleColorBtn" 
                            Width="60" Height="30"
                            Click="ThrottleColorBtn_Click"
-                           Background="#95E1D3"
+                           Background="#09B61A"
                            BorderBrush="#555555"
                            Cursor="Hand"/>
                 </StackPanel>

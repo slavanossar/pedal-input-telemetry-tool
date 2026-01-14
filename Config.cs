@@ -16,9 +16,9 @@ namespace PedalTelemetry
         public int TraceSeconds { get; set; } = 8;
         public Dictionary<string, string> Colors { get; set; } = new Dictionary<string, string>
         {
-            { "clutch", "#FF6B6B" },
-            { "brake", "#4ECDC4" },
-            { "throttle", "#95E1D3" }
+            { "clutch", "#0085F1" },
+            { "brake", "#D80404" },
+            { "throttle", "#09B61A" }
         };
 
         private static string ConfigDirectory => Path.Combine(

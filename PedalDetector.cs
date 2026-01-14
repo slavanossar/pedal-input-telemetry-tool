@@ -85,16 +85,55 @@ namespace PedalTelemetry
                                 baselineValues[(guid, i)] = axes[i];
                             }
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            // Skip devices that can't be opened
+                            // Skip devices that can't be opened (might be in use by HidReader)
+                            System.Diagnostics.Debug.WriteLine($"Could not open device {name}: {ex.Message}");
                         }
+                    }
+
+                    if (_monitoredDevices.Count == 0)
+                    {
+                        onStatusUpdate?.Invoke("No devices available for detection. They may be in use.");
+                        onDetected?.Invoke(null);
+                        return;
                     }
 
                     onStatusUpdate?.Invoke("Press the pedal now...");
 
+                    // Wait a moment to let baselines stabilize
+                    Thread.Sleep(200);
+
+                    // Re-establish baselines after the wait
+                    foreach (var (guid, joystick) in _monitoredDevices)
+                    {
+                        try
+                        {
+                            joystick.Poll();
+                            var state = joystick.GetCurrentState();
+                            var axes = new int[] { state.X, state.Y, state.Z, state.RotationX, state.RotationY, state.RotationZ };
+                            for (int i = 0; i < axes.Length; i++)
+                            {
+                                baselineValues[(guid, i)] = axes[i];
+                            }
+                            
+                            // Also set slider baselines
+                            if (state.Sliders != null)
+                            {
+                                for (int sliderIndex = 0; sliderIndex < state.Sliders.Length; sliderIndex++)
+                                {
+                                    baselineValues[(guid, 100 + sliderIndex)] = state.Sliders[sliderIndex];
+                                }
+                            }
+                        }
+                        catch
+                        {
+                            // Skip if can't read
+                        }
+                    }
+
                     var startTime = DateTime.Now;
-                    var threshold = 5000; // Significant change threshold (about 15% of full range)
+                    var threshold = 3000; // Lower threshold (about 9% of full range) for better sensitivity
 
                     while (!token.IsCancellationRequested && (DateTime.Now - startTime).TotalSeconds < timeoutSeconds)
                     {
@@ -143,14 +182,9 @@ namespace PedalTelemetry
                                     {
                                         var current = state.Sliders[sliderIndex];
                                         var key = (guid, 100 + sliderIndex); // Use offset to distinguish from axes
-                                        if (!baselineValues.ContainsKey(key))
+                                        if (baselineValues.TryGetValue(key, out var sliderBaseline))
                                         {
-                                            baselineValues[key] = current;
-                                        }
-                                        else
-                                        {
-                                            var baseline = baselineValues[key];
-                                            var change = Math.Abs(current - baseline);
+                                            var change = Math.Abs(current - sliderBaseline);
                                             if (change > threshold)
                                             {
                                                 var deviceIndex = deviceList.FindIndex(d => d.Key == guid);
@@ -191,7 +225,13 @@ namespace PedalTelemetry
                 }
                 catch (Exception ex)
                 {
-                    onStatusUpdate?.Invoke($"Error during detection: {ex.Message}");
+                    var errorMsg = $"Error during detection: {ex.Message}";
+                    if (ex.InnerException != null)
+                    {
+                        errorMsg += $"\nInner: {ex.InnerException.Message}";
+                    }
+                    System.Diagnostics.Debug.WriteLine($"Detection error: {errorMsg}\n{ex.StackTrace}");
+                    onStatusUpdate?.Invoke(errorMsg);
                     onDetected?.Invoke(null);
                 }
             }, token);

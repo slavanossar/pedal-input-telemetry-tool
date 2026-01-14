@@ -13,9 +13,9 @@ namespace PedalTelemetry
     {
         private readonly HidReader? _hidReader;
         private Config _config;
-        private string _clutchColor = "#FF6B6B";
-        private string _brakeColor = "#4ECDC4";
-        private string _throttleColor = "#95E1D3";
+        private string _clutchColor = "#0085F1";
+        private string _brakeColor = "#D80404";
+        private string _throttleColor = "#09B61A";
         private PedalDetector? _detector;
         private bool _isDetecting = false;
         private int? _detectedClutchAxis;
@@ -432,13 +432,19 @@ namespace PedalTelemetry
                 button.Content = "Detect";
                 button.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4CAF50"));
                 statusLabel.Content = "";
+                
+                // Restart HidReader when detection is stopped
+                _hidReader?.Start();
                 return;
             }
 
             _isDetecting = true;
             button.Content = "Stop";
-            button.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF6B6B"));
+            button.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D80404"));
             statusLabel.Content = "Waiting for input...";
+
+            // Temporarily stop HidReader to release devices for detection
+            _hidReader?.Stop();
 
             if (_detector == null)
             {
@@ -479,12 +485,15 @@ namespace PedalTelemetry
                         else
                         {
                             statusLabel.Content = "Not detected";
-                            statusLabel.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF6B6B"));
+                            statusLabel.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D80404"));
                         }
 
                         _isDetecting = false;
                         button.Content = "Detect";
                         button.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4CAF50"));
+                        
+                        // Restart HidReader after detection completes (success or failure)
+                        _hidReader?.Start();
                     });
                 },
                 status =>
@@ -502,6 +511,13 @@ namespace PedalTelemetry
         {
             _detector?.StopDetection();
             _detector?.Dispose();
+            
+            // Make sure HidReader is restarted if window closes during detection
+            if (_isDetecting)
+            {
+                _hidReader?.Start();
+            }
+            
             base.OnClosed(e);
         }
     }
