@@ -21,13 +21,28 @@ namespace PedalTelemetry
             { "throttle", "#95E1D3" }
         };
 
-        private static string ConfigPath => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".pedal_telemetry_config.json"
+        private static string ConfigDirectory => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "Pedal Input Telemetry Tool"
         );
+
+        private static string ConfigPath => Path.Combine(
+            ConfigDirectory,
+            "config.json"
+        );
+
+        private static void EnsureConfigDirectoryExists()
+        {
+            if (!Directory.Exists(ConfigDirectory))
+            {
+                Directory.CreateDirectory(ConfigDirectory);
+            }
+        }
 
         public static Config Load()
         {
+            EnsureConfigDirectoryExists();
+            
             if (File.Exists(ConfigPath))
             {
                 try
@@ -49,6 +64,7 @@ namespace PedalTelemetry
         {
             try
             {
+                EnsureConfigDirectoryExists();
                 var options = new JsonSerializerOptions { WriteIndented = true };
                 var json = JsonSerializer.Serialize(this, options);
                 File.WriteAllText(ConfigPath, json);
