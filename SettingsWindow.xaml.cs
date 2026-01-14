@@ -24,38 +24,84 @@ namespace PedalTelemetry
 
         public SettingsWindow(HidReader? hidReader)
         {
-            InitializeComponent();
-            _hidReader = hidReader;
-            _config = Config.Load();
+            try
+            {
+                InitializeComponent();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error initializing window: {ex.Message}\n\n{ex.StackTrace}", 
+                    "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw;
+            }
             
-            // Load non-device settings first
-            LoadNonDeviceSettings();
-            
-            // Load device settings after window is loaded to avoid initialization issues
-            Loaded += SettingsWindow_Loaded;
+            try
+            {
+                _hidReader = hidReader;
+                _config = Config.Load();
+                
+                // Load non-device settings first
+                LoadNonDeviceSettings();
+                
+                // Load device settings after window is loaded to avoid initialization issues
+                // Use a longer delay to ensure window is fully rendered before attempting device operations
+                Loaded += SettingsWindow_Loaded;
+            }
+            catch (Exception ex)
+            {
+                var errorMsg = $"Error loading settings: {ex.Message}";
+                if (ex.StackTrace != null)
+                {
+                    errorMsg += $"\n\nStack Trace:\n{ex.StackTrace}";
+                }
+                MessageBox.Show(errorMsg, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void SettingsWindow_Loaded(object sender, RoutedEventArgs e)
         {
             // Load device settings asynchronously to avoid blocking UI
-            _ = Task.Run(() =>
+            // Use a longer delay to ensure window is fully rendered
+            _ = Task.Delay(200).ContinueWith(_ =>
             {
                 try
                 {
-                    // Small delay to ensure window is fully initialized
-                    System.Threading.Thread.Sleep(100);
-                    Dispatcher.Invoke(() => RefreshDevices());
-                    Dispatcher.Invoke(() => LoadDeviceSettings());
+                    Dispatcher.Invoke(() =>
+                    {
+                        try
+                        {
+                            RefreshDevices();
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error in RefreshDevices: {ex.Message}\n{ex.StackTrace}");
+                            // Show error but don't crash
+                            MessageBox.Show($"Warning: Could not refresh devices. {ex.Message}", 
+                                "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        }
+                    });
+                    
+                    Dispatcher.Invoke(() =>
+                    {
+                        try
+                        {
+                            LoadDeviceSettings();
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error in LoadDeviceSettings: {ex.Message}\n{ex.StackTrace}");
+                        }
+                    });
                 }
                 catch (Exception ex)
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        MessageBox.Show($"Error loading device settings: {ex.Message}", 
+                        MessageBox.Show($"Error loading device settings: {ex.Message}\n\n{ex.StackTrace}", 
                             "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                     });
                 }
-            });
+            }, TaskScheduler.Default);
         }
 
         private void LoadNonDeviceSettings()
@@ -63,29 +109,40 @@ namespace PedalTelemetry
             // Load trace seconds
             try
             {
-                TraceSecondsSlider.Value = _config.TraceSeconds;
-                TraceSecondsLabel.Content = $"{_config.TraceSeconds} seconds";
+                if (TraceSecondsSlider != null)
+                {
+                    TraceSecondsSlider.Value = _config.TraceSeconds;
+                }
+                if (TraceSecondsLabel != null)
+                {
+                    TraceSecondsLabel.Content = $"{_config.TraceSeconds} seconds";
+                }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading trace seconds: {ex.Message}");
+                MessageBox.Show($"Error loading trace seconds: {ex.Message}", 
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
 
             // Load colors
             try
             {
-                if (_config.Colors.ContainsKey("clutch"))
-                    _clutchColor = _config.Colors["clutch"];
-                if (_config.Colors.ContainsKey("brake"))
-                    _brakeColor = _config.Colors["brake"];
-                if (_config.Colors.ContainsKey("throttle"))
-                    _throttleColor = _config.Colors["throttle"];
+                if (_config.Colors != null)
+                {
+                    if (_config.Colors.ContainsKey("clutch"))
+                        _clutchColor = _config.Colors["clutch"];
+                    if (_config.Colors.ContainsKey("brake"))
+                        _brakeColor = _config.Colors["brake"];
+                    if (_config.Colors.ContainsKey("throttle"))
+                        _throttleColor = _config.Colors["throttle"];
+                }
 
                 UpdateColorButtons();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading colors: {ex.Message}");
+                MessageBox.Show($"Error loading colors: {ex.Message}", 
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -144,14 +201,23 @@ namespace PedalTelemetry
                 return;
             }
 
+            // Check if combo boxes are initialized
+            if (ClutchCombo == null || BrakeCombo == null || ThrottleCombo == null)
+            {
+                System.Diagnostics.Debug.WriteLine("Combo boxes not initialized yet");
+                return;
+            }
+
             try
             {
                 var devices = _hidReader.GetAvailableDevices();
-                var deviceList = devices.ToList();
+                var deviceList = devices?.ToList() ?? new List<System.Collections.Generic.KeyValuePair<Guid, string>>();
 
                 // Clear and populate combo boxes
                 foreach (var combo in new[] { ClutchCombo, BrakeCombo, ThrottleCombo })
                 {
+                    if (combo == null) continue;
+                    
                     combo.Items.Clear();
                     combo.Items.Add(new ComboBoxItem { Content = "None", Tag = (int?)null });
 
@@ -168,11 +234,13 @@ namespace PedalTelemetry
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error refreshing devices: {ex.Message}", "Error", 
+                var errorMsg = $"Error refreshing devices: {ex.Message}\n\nStack Trace:\n{ex.StackTrace}";
+                MessageBox.Show(errorMsg, "Error", 
                     MessageBoxButton.OK, MessageBoxImage.Error);
                 // Still populate with "None" option even if device enumeration fails
                 foreach (var combo in new[] { ClutchCombo, BrakeCombo, ThrottleCombo })
                 {
+                    if (combo == null) continue;
                     combo.Items.Clear();
                     combo.Items.Add(new ComboBoxItem { Content = "None", Tag = (int?)null });
                 }
@@ -282,9 +350,25 @@ namespace PedalTelemetry
 
         private void UpdateColorButtons()
         {
-            ClutchColorBtn.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(_clutchColor));
-            BrakeColorBtn.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(_brakeColor));
-            ThrottleColorBtn.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(_throttleColor));
+            try
+            {
+                if (ClutchColorBtn != null)
+                {
+                    ClutchColorBtn.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(_clutchColor));
+                }
+                if (BrakeColorBtn != null)
+                {
+                    BrakeColorBtn.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(_brakeColor));
+                }
+                if (ThrottleColorBtn != null)
+                {
+                    ThrottleColorBtn.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(_throttleColor));
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating color buttons: {ex.Message}");
+            }
         }
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
