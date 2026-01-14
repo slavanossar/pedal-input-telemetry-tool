@@ -19,8 +19,8 @@
                  BorderBrush="#404040"
                  Margin="0,0,0,10">
             <StackPanel Margin="10">
-                <Button Content="Refresh Devices" 
-                       Click="RefreshDevices_Click"
+                <Button Content="Refresh Axes" 
+                       Click="RefreshAxes_Click"
                        Width="120" Height="30"
                        Margin="0,0,0,10"
                        Background="#333333"
@@ -29,75 +29,33 @@
                        Cursor="Hand"/>
 
                 <StackPanel Orientation="Horizontal" Margin="0,5">
-                    <Label Content="Clutch Device:" Width="120" Foreground="White"/>
-                    <ComboBox x:Name="ClutchCombo" Width="200" 
+                    <Label Content="Clutch:" Width="120" Foreground="White"/>
+                    <ComboBox x:Name="ClutchAxisCombo" Width="250" 
                              Background="#2A2A2A" 
                              Foreground="White"
                              BorderBrush="#444444"
-                             Margin="0,0,5,0"/>
-                    <Button x:Name="ClutchDetectBtn" 
-                           Content="Detect" 
-                           Width="70" Height="25"
-                           Click="ClutchDetectBtn_Click"
-                           Background="#4CAF50"
-                           BorderBrush="#555555"
-                           Foreground="White"
-                           Cursor="Hand"
-                           Margin="0,0,0,0"/>
-                    <Label x:Name="ClutchDetectStatus" 
-                          Content="" 
-                          Width="120" 
-                          Margin="5,0,0,0"
-                          Foreground="#FFD700"
-                          FontSize="10"/>
+                             Margin="0,0,5,0"
+                             SelectionChanged="ClutchAxisCombo_SelectionChanged"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Margin="0,5">
-                    <Label Content="Brake Device:" Width="120" Foreground="White"/>
-                    <ComboBox x:Name="BrakeCombo" Width="200"
+                    <Label Content="Brake:" Width="120" Foreground="White"/>
+                    <ComboBox x:Name="BrakeAxisCombo" Width="250"
                              Background="#2A2A2A" 
                              Foreground="White"
                              BorderBrush="#444444"
-                             Margin="0,0,5,0"/>
-                    <Button x:Name="BrakeDetectBtn" 
-                           Content="Detect" 
-                           Width="70" Height="25"
-                           Click="BrakeDetectBtn_Click"
-                           Background="#4CAF50"
-                           BorderBrush="#555555"
-                           Foreground="White"
-                           Cursor="Hand"
-                           Margin="0,0,0,0"/>
-                    <Label x:Name="BrakeDetectStatus" 
-                          Content="" 
-                          Width="120" 
-                          Margin="5,0,0,0"
-                          Foreground="#FFD700"
-                          FontSize="10"/>
+                             Margin="0,0,5,0"
+                             SelectionChanged="BrakeAxisCombo_SelectionChanged"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Margin="0,5">
-                    <Label Content="Throttle Device:" Width="120" Foreground="White"/>
-                    <ComboBox x:Name="ThrottleCombo" Width="200"
+                    <Label Content="Throttle:" Width="120" Foreground="White"/>
+                    <ComboBox x:Name="ThrottleAxisCombo" Width="250"
                              Background="#2A2A2A" 
                              Foreground="White"
                              BorderBrush="#444444"
-                             Margin="0,0,5,0"/>
-                    <Button x:Name="ThrottleDetectBtn" 
-                           Content="Detect" 
-                           Width="70" Height="25"
-                           Click="ThrottleDetectBtn_Click"
-                           Background="#4CAF50"
-                           BorderBrush="#555555"
-                           Foreground="White"
-                           Cursor="Hand"
-                           Margin="0,0,0,0"/>
-                    <Label x:Name="ThrottleDetectStatus" 
-                          Content="" 
-                          Width="120" 
-                          Margin="5,0,0,0"
-                          Foreground="#FFD700"
-                          FontSize="10"/>
+                             Margin="0,0,5,0"
+                             SelectionChanged="ThrottleAxisCombo_SelectionChanged"/>
                 </StackPanel>
             </StackPanel>
         </GroupBox>

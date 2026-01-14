@@ -16,11 +16,6 @@ namespace PedalTelemetry
         private string _clutchColor = "#0085F1";
         private string _brakeColor = "#D80404";
         private string _throttleColor = "#09B61A";
-        private PedalDetector? _detector;
-        private bool _isDetecting = false;
-        private int? _detectedClutchAxis;
-        private int? _detectedBrakeAxis;
-        private int? _detectedThrottleAxis;
 
         public SettingsWindow(HidReader? hidReader)
         {
@@ -70,13 +65,13 @@ namespace PedalTelemetry
                     {
                         try
                         {
-                            RefreshDevices();
+                            RefreshAxes();
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"Error in RefreshDevices: {ex.Message}\n{ex.StackTrace}");
+                            System.Diagnostics.Debug.WriteLine($"Error in RefreshAxes: {ex.Message}\n{ex.StackTrace}");
                             // Show error but don't crash
-                            MessageBox.Show($"Warning: Could not refresh devices. {ex.Message}", 
+                            MessageBox.Show($"Warning: Could not refresh axes. {ex.Message}", 
                                 "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
                         }
                     });
@@ -149,52 +144,39 @@ namespace PedalTelemetry
 
         private void LoadDeviceSettings()
         {
-            // Load axis indices
-            _detectedClutchAxis = _config.ClutchAxis;
-            _detectedBrakeAxis = _config.BrakeAxis;
-            _detectedThrottleAxis = _config.ThrottleAxis;
-
-            // Load selected devices
+            // Refresh axes first, then select based on config
+            RefreshAxes();
+            
+            // Select axes based on saved config
             try
             {
-                if (_config.ClutchHid.HasValue)
-                    SetComboSelection(ClutchCombo, _config.ClutchHid.Value);
-                if (_config.BrakeHid.HasValue)
-                    SetComboSelection(BrakeCombo, _config.BrakeHid.Value);
-                if (_config.ThrottleHid.HasValue)
-                    SetComboSelection(ThrottleCombo, _config.ThrottleHid.Value);
+                SelectAxisFromConfig(ClutchAxisCombo, _config.ClutchHid, _config.ClutchAxis);
+                SelectAxisFromConfig(BrakeAxisCombo, _config.BrakeHid, _config.BrakeAxis);
+                SelectAxisFromConfig(ThrottleAxisCombo, _config.ThrottleHid, _config.ThrottleAxis);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error setting combo selections: {ex.Message}");
-            }
-
-            // Show current axis in status labels
-            try
-            {
-                if (_config.ClutchHid.HasValue && _detectedClutchAxis.HasValue)
-                {
-                    var axisLabel = _detectedClutchAxis.Value >= 100 ? $"Slider {_detectedClutchAxis.Value - 100}" : $"Axis {_detectedClutchAxis.Value}";
-                    ClutchDetectStatus.Content = $"Current: {axisLabel}";
-                }
-                if (_config.BrakeHid.HasValue && _detectedBrakeAxis.HasValue)
-                {
-                    var axisLabel = _detectedBrakeAxis.Value >= 100 ? $"Slider {_detectedBrakeAxis.Value - 100}" : $"Axis {_detectedBrakeAxis.Value}";
-                    BrakeDetectStatus.Content = $"Current: {axisLabel}";
-                }
-                if (_config.ThrottleHid.HasValue && _detectedThrottleAxis.HasValue)
-                {
-                    var axisLabel = _detectedThrottleAxis.Value >= 100 ? $"Slider {_detectedThrottleAxis.Value - 100}" : $"Axis {_detectedThrottleAxis.Value}";
-                    ThrottleDetectStatus.Content = $"Current: {axisLabel}";
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error setting status labels: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error loading axis selections: {ex.Message}");
             }
         }
 
-        private void RefreshDevices()
+        private void SelectAxisFromConfig(ComboBox combo, int? deviceIndex, int axisIndex)
+        {
+            if (!deviceIndex.HasValue) return;
+            
+            foreach (ComboBoxItem item in combo.Items)
+            {
+                if (item.Tag is HidReader.AxisInfo axis && 
+                    axis.DeviceIndex == deviceIndex.Value && 
+                    axis.AxisIndex == axisIndex)
+                {
+                    combo.SelectedItem = item;
+                    return;
+                }
+            }
+        }
+
+        private void RefreshAxes()
         {
             if (_hidReader == null)
             {
@@ -203,49 +185,80 @@ namespace PedalTelemetry
             }
 
             // Check if combo boxes are initialized
-            if (ClutchCombo == null || BrakeCombo == null || ThrottleCombo == null)
+            if (ClutchAxisCombo == null || BrakeAxisCombo == null || ThrottleAxisCombo == null)
             {
-                System.Diagnostics.Debug.WriteLine("Combo boxes not initialized yet");
+                System.Diagnostics.Debug.WriteLine("Axis combo boxes not initialized yet");
                 return;
             }
 
             try
             {
-                var devices = _hidReader.GetAvailableDevices();
-                var deviceList = devices?.ToList() ?? new List<System.Collections.Generic.KeyValuePair<Guid, string>>();
+                // Temporarily stop HidReader to access devices
+                _hidReader?.Stop();
+                
+                var axes = _hidReader.GetAllAvailableAxes();
+
+                // Store current selections
+                var clutchSelection = GetSelectedAxis(ClutchAxisCombo);
+                var brakeSelection = GetSelectedAxis(BrakeAxisCombo);
+                var throttleSelection = GetSelectedAxis(ThrottleAxisCombo);
 
                 // Clear and populate combo boxes
-                foreach (var combo in new[] { ClutchCombo, BrakeCombo, ThrottleCombo })
-                {
-                    if (combo == null) continue;
-                    
-                    combo.Items.Clear();
-                    combo.Items.Add(new ComboBoxItem { Content = "None", Tag = (int?)null });
-
-                    for (int i = 0; i < deviceList.Count; i++)
-                    {
-                        var device = deviceList[i];
-                        combo.Items.Add(new ComboBoxItem 
-                        { 
-                            Content = $"Device {i}: {device.Value}", 
-                            Tag = i 
-                        });
-                    }
-                }
+                PopulateAxisCombo(ClutchAxisCombo, axes, clutchSelection);
+                PopulateAxisCombo(BrakeAxisCombo, axes, brakeSelection);
+                PopulateAxisCombo(ThrottleAxisCombo, axes, throttleSelection);
+                
+                // Restart HidReader
+                _hidReader?.Start();
             }
             catch (Exception ex)
             {
-                var errorMsg = $"Error refreshing devices: {ex.Message}\n\nStack Trace:\n{ex.StackTrace}";
+                var errorMsg = $"Error refreshing axes: {ex.Message}\n\nStack Trace:\n{ex.StackTrace}";
                 MessageBox.Show(errorMsg, "Error", 
                     MessageBoxButton.OK, MessageBoxImage.Error);
-                // Still populate with "None" option even if device enumeration fails
-                foreach (var combo in new[] { ClutchCombo, BrakeCombo, ThrottleCombo })
+                // Still populate with "None" option even if enumeration fails
+                foreach (var combo in new[] { ClutchAxisCombo, BrakeAxisCombo, ThrottleAxisCombo })
                 {
                     if (combo == null) continue;
                     combo.Items.Clear();
-                    combo.Items.Add(new ComboBoxItem { Content = "None", Tag = (int?)null });
+                    combo.Items.Add(new ComboBoxItem { Content = "None", Tag = (HidReader.AxisInfo?)null });
+                }
+                
+                _hidReader?.Start();
+            }
+        }
+
+        private void PopulateAxisCombo(ComboBox combo, List<HidReader.AxisInfo> axes, (int deviceIndex, int axisIndex)? currentSelection)
+        {
+            combo.Items.Clear();
+            combo.Items.Add(new ComboBoxItem { Content = "None", Tag = (HidReader.AxisInfo?)null });
+
+            foreach (var axis in axes)
+            {
+                var item = new ComboBoxItem 
+                { 
+                    Content = axis.AxisName, 
+                    Tag = axis 
+                };
+                combo.Items.Add(item);
+                
+                // Select if matches current selection
+                if (currentSelection.HasValue && 
+                    axis.DeviceIndex == currentSelection.Value.deviceIndex && 
+                    axis.AxisIndex == currentSelection.Value.axisIndex)
+                {
+                    combo.SelectedItem = item;
                 }
             }
+        }
+
+        private (int deviceIndex, int axisIndex)? GetSelectedAxis(ComboBox combo)
+        {
+            if (combo.SelectedItem is ComboBoxItem item && item.Tag is HidReader.AxisInfo axis)
+            {
+                return (axis.DeviceIndex, axis.AxisIndex);
+            }
+            return null;
         }
 
         private void SetComboSelection(System.Windows.Controls.ComboBox combo, int index)
@@ -267,7 +280,7 @@ namespace PedalTelemetry
             return null;
         }
 
-        private void RefreshDevices_Click(object sender, RoutedEventArgs e)
+        private void RefreshAxes_Click(object sender, RoutedEventArgs e)
         {
             // Disable button while refreshing
             if (sender is Button btn)
@@ -376,13 +389,40 @@ namespace PedalTelemetry
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            // Save HID devices
-            _config.ClutchHid = GetSelectedDeviceIndex(ClutchCombo);
-            _config.BrakeHid = GetSelectedDeviceIndex(BrakeCombo);
-            _config.ThrottleHid = GetSelectedDeviceIndex(ThrottleCombo);
+            // Save axis selections
+            var clutchAxis = GetSelectedAxis(ClutchAxisCombo);
+            var brakeAxis = GetSelectedAxis(BrakeAxisCombo);
+            var throttleAxis = GetSelectedAxis(ThrottleAxisCombo);
 
-            // Note: Axis indices are saved when detected via the Detect button
-            // They're stored in the config when detection completes
+            if (clutchAxis.HasValue)
+            {
+                _config.ClutchHid = clutchAxis.Value.deviceIndex;
+                _config.ClutchAxis = clutchAxis.Value.axisIndex;
+            }
+            else
+            {
+                _config.ClutchHid = null;
+            }
+
+            if (brakeAxis.HasValue)
+            {
+                _config.BrakeHid = brakeAxis.Value.deviceIndex;
+                _config.BrakeAxis = brakeAxis.Value.axisIndex;
+            }
+            else
+            {
+                _config.BrakeHid = null;
+            }
+
+            if (throttleAxis.HasValue)
+            {
+                _config.ThrottleHid = throttleAxis.Value.deviceIndex;
+                _config.ThrottleAxis = throttleAxis.Value.axisIndex;
+            }
+            else
+            {
+                _config.ThrottleHid = null;
+            }
 
             // Save trace seconds
             _config.TraceSeconds = (int)TraceSecondsSlider.Value;
@@ -406,117 +446,24 @@ namespace PedalTelemetry
             Close();
         }
 
-        private void ClutchDetectBtn_Click(object sender, RoutedEventArgs e)
+        private void ClutchAxisCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            StartDetection("clutch", ClutchCombo, ClutchDetectBtn, ClutchDetectStatus);
+            // Selection changed - no action needed, will be saved on Save button
         }
 
-        private void BrakeDetectBtn_Click(object sender, RoutedEventArgs e)
+        private void BrakeAxisCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            StartDetection("brake", BrakeCombo, BrakeDetectBtn, BrakeDetectStatus);
+            // Selection changed - no action needed, will be saved on Save button
         }
 
-        private void ThrottleDetectBtn_Click(object sender, RoutedEventArgs e)
+        private void ThrottleAxisCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            StartDetection("throttle", ThrottleCombo, ThrottleDetectBtn, ThrottleDetectStatus);
+            // Selection changed - no action needed, will be saved on Save button
         }
 
-        private void StartDetection(string pedalName, System.Windows.Controls.ComboBox combo, 
-            System.Windows.Controls.Button button, System.Windows.Controls.Label statusLabel)
-        {
-            if (_isDetecting)
-            {
-                // Stop current detection
-                _detector?.StopDetection();
-                _isDetecting = false;
-                button.Content = "Detect";
-                button.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4CAF50"));
-                statusLabel.Content = "";
-                
-                // Restart HidReader when detection is stopped
-                _hidReader?.Start();
-                return;
-            }
-
-            _isDetecting = true;
-            button.Content = "Stop";
-            button.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D80404"));
-            statusLabel.Content = "Waiting for input...";
-
-            // Temporarily stop HidReader to release devices for detection
-            _hidReader?.Stop();
-
-            if (_detector == null)
-            {
-                _detector = new PedalDetector();
-            }
-
-            _detector.StartDetection(
-                result =>
-                {
-                    Dispatcher.Invoke(() =>
-                    {
-                        if (result != null)
-                        {
-                            // Set the combo box to the detected device
-                            SetComboSelection(combo, result.DeviceIndex);
-                            
-                            // Store the detected axis
-                            if (pedalName == "clutch")
-                            {
-                                _config.ClutchAxis = result.AxisIndex;
-                                _detectedClutchAxis = result.AxisIndex;
-                            }
-                            else if (pedalName == "brake")
-                            {
-                                _config.BrakeAxis = result.AxisIndex;
-                                _detectedBrakeAxis = result.AxisIndex;
-                            }
-                            else if (pedalName == "throttle")
-                            {
-                                _config.ThrottleAxis = result.AxisIndex;
-                                _detectedThrottleAxis = result.AxisIndex;
-                            }
-                            
-                            var axisLabel = result.AxisIndex >= 100 ? $"Slider {result.AxisIndex - 100}" : $"Axis {result.AxisIndex}";
-                            statusLabel.Content = $"Detected: {axisLabel}";
-                            statusLabel.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4CAF50"));
-                        }
-                        else
-                        {
-                            statusLabel.Content = "Not detected";
-                            statusLabel.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D80404"));
-                        }
-
-                        _isDetecting = false;
-                        button.Content = "Detect";
-                        button.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4CAF50"));
-                        
-                        // Restart HidReader after detection completes (success or failure)
-                        _hidReader?.Start();
-                    });
-                },
-                status =>
-                {
-                    Dispatcher.Invoke(() =>
-                    {
-                        statusLabel.Content = status;
-                    });
-                }
-            );
-        }
 
         protected override void OnClosed(EventArgs e)
         {
-            _detector?.StopDetection();
-            _detector?.Dispose();
-            
-            // Make sure HidReader is restarted if window closes during detection
-            if (_isDetecting)
-            {
-                _hidReader?.Start();
-            }
-            
             base.OnClosed(e);
         }
     }

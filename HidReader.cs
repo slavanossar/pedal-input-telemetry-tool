@@ -52,6 +52,113 @@ namespace PedalTelemetry
             return devices;
         }
 
+        public class AxisInfo
+        {
+            public int DeviceIndex { get; set; }
+            public Guid DeviceGuid { get; set; }
+            public string DeviceName { get; set; } = "";
+            public int AxisIndex { get; set; }
+            public string AxisName { get; set; } = "";
+        }
+
+        public List<AxisInfo> GetAllAvailableAxes()
+        {
+            var axes = new List<AxisInfo>();
+            var devices = GetAvailableDevices();
+            var deviceList = devices.ToList();
+
+            for (int deviceIdx = 0; deviceIdx < deviceList.Count; deviceIdx++)
+            {
+                var (guid, name) = deviceList[deviceIdx];
+                
+                try
+                {
+                    // Try to open device to check available axes
+                    var joystick = new Joystick(_directInput, guid);
+                    joystick.Properties.BufferSize = 128;
+                    
+                    try
+                    {
+                        joystick.Acquire();
+                        joystick.Poll();
+                        var state = joystick.GetCurrentState();
+                        
+                        // Check which axes have non-zero values or are actually present
+                        // We'll add all 6 standard axes and check for sliders
+                        string[] axisNames = { "X", "Y", "Z", "X Rotation", "Y Rotation", "Z Rotation" };
+                        var axesArray = new int[] { state.X, state.Y, state.Z, state.RotationX, state.RotationY, state.RotationZ };
+                        
+                        // Add all 6 standard axes (they might all be present even if some are 0)
+                        for (int i = 0; i < 6; i++)
+                        {
+                            axes.Add(new AxisInfo
+                            {
+                                DeviceIndex = deviceIdx,
+                                DeviceGuid = guid,
+                                DeviceName = name,
+                                AxisIndex = i,
+                                AxisName = $"{name} - {axisNames[i]}"
+                            });
+                        }
+                        
+                        // Add sliders if present
+                        if (state.Sliders != null)
+                        {
+                            for (int i = 0; i < state.Sliders.Length; i++)
+                            {
+                                axes.Add(new AxisInfo
+                                {
+                                    DeviceIndex = deviceIdx,
+                                    DeviceGuid = guid,
+                                    DeviceName = name,
+                                    AxisIndex = 100 + i,
+                                    AxisName = $"{name} - Slider {i}"
+                                });
+                            }
+                        }
+                        
+                        joystick.Unacquire();
+                    }
+                    catch
+                    {
+                        // Device might be in use, add all standard axes as potential options anyway
+                        string[] axisNames = { "X", "Y", "Z", "X Rotation", "Y Rotation", "Z Rotation" };
+                        for (int i = 0; i < 6; i++)
+                        {
+                            axes.Add(new AxisInfo
+                            {
+                                DeviceIndex = deviceIdx,
+                                DeviceGuid = guid,
+                                DeviceName = name,
+                                AxisIndex = i,
+                                AxisName = $"{name} - {axisNames[i]}"
+                            });
+                        }
+                    }
+                    
+                    joystick.Dispose();
+                }
+                catch
+                {
+                    // Skip devices that can't be opened, but still add standard axes as options
+                    string[] axisNames = { "X", "Y", "Z", "X Rotation", "Y Rotation", "Z Rotation" };
+                    for (int i = 0; i < 6; i++)
+                    {
+                        axes.Add(new AxisInfo
+                        {
+                            DeviceIndex = deviceIdx,
+                            DeviceGuid = guid,
+                            DeviceName = name,
+                            AxisIndex = i,
+                            AxisName = $"{name} - {axisNames[i]}"
+                        });
+                    }
+                }
+            }
+
+            return axes;
+        }
+
         public void SetHidMappings(Guid? clutchGuid, Guid? brakeGuid, Guid? throttleGuid, 
             int clutchAxis = 2, int brakeAxis = 1, int throttleAxis = 0)
         {
