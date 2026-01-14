@@ -13,6 +13,10 @@
     <Description>Sim racing pedal input telemetry display tool</Description>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="SharpDX.DirectInput" Version="4.2.0" />
   </ItemGroup>
