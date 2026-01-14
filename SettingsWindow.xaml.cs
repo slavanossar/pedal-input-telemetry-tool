@@ -109,13 +109,14 @@ namespace PedalTelemetry
             // Load trace seconds
             try
             {
-                if (TraceSecondsSlider != null)
+                if (TraceSecondsSlider != null && TraceSecondsLabel != null)
                 {
+                    // Temporarily remove event handler to prevent ValueChanged from firing
+                    TraceSecondsSlider.ValueChanged -= TraceSecondsSlider_ValueChanged;
                     TraceSecondsSlider.Value = _config.TraceSeconds;
-                }
-                if (TraceSecondsLabel != null)
-                {
                     TraceSecondsLabel.Content = $"{_config.TraceSeconds} seconds";
+                    // Re-add event handler
+                    TraceSecondsSlider.ValueChanged += TraceSecondsSlider_ValueChanged;
                 }
             }
             catch (Exception ex)
@@ -306,6 +307,8 @@ namespace PedalTelemetry
 
         private void TraceSecondsSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (TraceSecondsLabel == null) return; // Label not initialized yet
+            
             var seconds = (int)e.NewValue;
             TraceSecondsLabel.Content = $"{seconds} seconds";
         }
