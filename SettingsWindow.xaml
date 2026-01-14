@@ -117,7 +117,7 @@
                                ValueChanged="TraceSecondsSlider_ValueChanged"
                                TickFrequency="1" IsSnapToTickEnabled="True"/>
                         <Label x:Name="TraceSecondsLabel" 
-                              Content="10 seconds" 
+                              Content="8 seconds" 
                               Width="100" 
                               Margin="10,0,0,0"
                               Foreground="White"/>

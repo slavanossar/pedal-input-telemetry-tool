@@ -12,7 +12,7 @@ namespace PedalTelemetry
     public partial class TraceGraph : UserControl
     {
         private readonly List<(double time, float clutch, float brake, float throttle)> _traceData = new();
-        private int _traceSeconds = 10;
+        private int _traceSeconds = 8;
         private readonly DispatcherTimer _updateTimer;
         private readonly Polyline _clutchLine;
         private readonly Polyline _brakeLine;

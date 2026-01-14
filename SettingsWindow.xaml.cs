@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -26,56 +27,113 @@ namespace PedalTelemetry
             InitializeComponent();
             _hidReader = hidReader;
             _config = Config.Load();
-            LoadSettings();
+            
+            // Load non-device settings first
+            LoadNonDeviceSettings();
+            
+            // Load device settings after window is loaded to avoid initialization issues
+            Loaded += SettingsWindow_Loaded;
         }
 
-        private void LoadSettings()
+        private void SettingsWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            RefreshDevices();
+            // Load device settings asynchronously to avoid blocking UI
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    // Small delay to ensure window is fully initialized
+                    System.Threading.Thread.Sleep(100);
+                    Dispatcher.Invoke(() => RefreshDevices());
+                    Dispatcher.Invoke(() => LoadDeviceSettings());
+                }
+                catch (Exception ex)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show($"Error loading device settings: {ex.Message}", 
+                            "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    });
+                }
+            });
+        }
 
-            // Load selected devices
-            if (_config.ClutchHid.HasValue)
-                SetComboSelection(ClutchCombo, _config.ClutchHid.Value);
-            if (_config.BrakeHid.HasValue)
-                SetComboSelection(BrakeCombo, _config.BrakeHid.Value);
-            if (_config.ThrottleHid.HasValue)
-                SetComboSelection(ThrottleCombo, _config.ThrottleHid.Value);
+        private void LoadNonDeviceSettings()
+        {
+            // Load trace seconds
+            try
+            {
+                TraceSecondsSlider.Value = _config.TraceSeconds;
+                TraceSecondsLabel.Content = $"{_config.TraceSeconds} seconds";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading trace seconds: {ex.Message}");
+            }
 
+            // Load colors
+            try
+            {
+                if (_config.Colors.ContainsKey("clutch"))
+                    _clutchColor = _config.Colors["clutch"];
+                if (_config.Colors.ContainsKey("brake"))
+                    _brakeColor = _config.Colors["brake"];
+                if (_config.Colors.ContainsKey("throttle"))
+                    _throttleColor = _config.Colors["throttle"];
+
+                UpdateColorButtons();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading colors: {ex.Message}");
+            }
+        }
+
+        private void LoadDeviceSettings()
+        {
             // Load axis indices
             _detectedClutchAxis = _config.ClutchAxis;
             _detectedBrakeAxis = _config.BrakeAxis;
             _detectedThrottleAxis = _config.ThrottleAxis;
 
+            // Load selected devices
+            try
+            {
+                if (_config.ClutchHid.HasValue)
+                    SetComboSelection(ClutchCombo, _config.ClutchHid.Value);
+                if (_config.BrakeHid.HasValue)
+                    SetComboSelection(BrakeCombo, _config.BrakeHid.Value);
+                if (_config.ThrottleHid.HasValue)
+                    SetComboSelection(ThrottleCombo, _config.ThrottleHid.Value);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error setting combo selections: {ex.Message}");
+            }
+
             // Show current axis in status labels
-            if (_config.ClutchHid.HasValue && _detectedClutchAxis.HasValue)
+            try
             {
-                var axisLabel = _detectedClutchAxis.Value >= 100 ? $"Slider {_detectedClutchAxis.Value - 100}" : $"Axis {_detectedClutchAxis.Value}";
-                ClutchDetectStatus.Content = $"Current: {axisLabel}";
+                if (_config.ClutchHid.HasValue && _detectedClutchAxis.HasValue)
+                {
+                    var axisLabel = _detectedClutchAxis.Value >= 100 ? $"Slider {_detectedClutchAxis.Value - 100}" : $"Axis {_detectedClutchAxis.Value}";
+                    ClutchDetectStatus.Content = $"Current: {axisLabel}";
+                }
+                if (_config.BrakeHid.HasValue && _detectedBrakeAxis.HasValue)
+                {
+                    var axisLabel = _detectedBrakeAxis.Value >= 100 ? $"Slider {_detectedBrakeAxis.Value - 100}" : $"Axis {_detectedBrakeAxis.Value}";
+                    BrakeDetectStatus.Content = $"Current: {axisLabel}";
+                }
+                if (_config.ThrottleHid.HasValue && _detectedThrottleAxis.HasValue)
+                {
+                    var axisLabel = _detectedThrottleAxis.Value >= 100 ? $"Slider {_detectedThrottleAxis.Value - 100}" : $"Axis {_detectedThrottleAxis.Value}";
+                    ThrottleDetectStatus.Content = $"Current: {axisLabel}";
+                }
             }
-            if (_config.BrakeHid.HasValue && _detectedBrakeAxis.HasValue)
+            catch (Exception ex)
             {
-                var axisLabel = _detectedBrakeAxis.Value >= 100 ? $"Slider {_detectedBrakeAxis.Value - 100}" : $"Axis {_detectedBrakeAxis.Value}";
-                BrakeDetectStatus.Content = $"Current: {axisLabel}";
+                System.Diagnostics.Debug.WriteLine($"Error setting status labels: {ex.Message}");
             }
-            if (_config.ThrottleHid.HasValue && _detectedThrottleAxis.HasValue)
-            {
-                var axisLabel = _detectedThrottleAxis.Value >= 100 ? $"Slider {_detectedThrottleAxis.Value - 100}" : $"Axis {_detectedThrottleAxis.Value}";
-                ThrottleDetectStatus.Content = $"Current: {axisLabel}";
-            }
-
-            // Load trace seconds
-            TraceSecondsSlider.Value = _config.TraceSeconds;
-            TraceSecondsLabel.Content = $"{_config.TraceSeconds} seconds";
-
-            // Load colors
-            if (_config.Colors.ContainsKey("clutch"))
-                _clutchColor = _config.Colors["clutch"];
-            if (_config.Colors.ContainsKey("brake"))
-                _brakeColor = _config.Colors["brake"];
-            if (_config.Colors.ContainsKey("throttle"))
-                _throttleColor = _config.Colors["throttle"];
-
-            UpdateColorButtons();
         }
 
         private void RefreshDevices()
@@ -86,23 +144,37 @@ namespace PedalTelemetry
                 return;
             }
 
-            var devices = _hidReader.GetAvailableDevices();
-            var deviceList = devices.ToList();
-
-            // Clear and populate combo boxes
-            foreach (var combo in new[] { ClutchCombo, BrakeCombo, ThrottleCombo })
+            try
             {
-                combo.Items.Clear();
-                combo.Items.Add(new ComboBoxItem { Content = "None", Tag = (int?)null });
+                var devices = _hidReader.GetAvailableDevices();
+                var deviceList = devices.ToList();
 
-                for (int i = 0; i < deviceList.Count; i++)
+                // Clear and populate combo boxes
+                foreach (var combo in new[] { ClutchCombo, BrakeCombo, ThrottleCombo })
                 {
-                    var device = deviceList[i];
-                    combo.Items.Add(new ComboBoxItem 
-                    { 
-                        Content = $"Device {i}: {device.Value}", 
-                        Tag = i 
-                    });
+                    combo.Items.Clear();
+                    combo.Items.Add(new ComboBoxItem { Content = "None", Tag = (int?)null });
+
+                    for (int i = 0; i < deviceList.Count; i++)
+                    {
+                        var device = deviceList[i];
+                        combo.Items.Add(new ComboBoxItem 
+                        { 
+                            Content = $"Device {i}: {device.Value}", 
+                            Tag = i 
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error refreshing devices: {ex.Message}", "Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                // Still populate with "None" option even if device enumeration fails
+                foreach (var combo in new[] { ClutchCombo, BrakeCombo, ThrottleCombo })
+                {
+                    combo.Items.Clear();
+                    combo.Items.Add(new ComboBoxItem { Content = "None", Tag = (int?)null });
                 }
             }
         }
@@ -128,7 +200,40 @@ namespace PedalTelemetry
 
         private void RefreshDevices_Click(object sender, RoutedEventArgs e)
         {
-            RefreshDevices();
+            // Disable button while refreshing
+            if (sender is Button btn)
+            {
+                btn.IsEnabled = false;
+                btn.Content = "Refreshing...";
+            }
+            
+            Task.Run(() =>
+            {
+                try
+                {
+                    Dispatcher.Invoke(() => RefreshDevices());
+                    Dispatcher.Invoke(() => LoadDeviceSettings());
+                }
+                catch (Exception ex)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show($"Error refreshing devices: {ex.Message}", 
+                            "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    });
+                }
+                finally
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (sender is Button button)
+                        {
+                            button.IsEnabled = true;
+                            button.Content = "Refresh Devices";
+                        }
+                    });
+                }
+            });
         }
 
         private void TraceSecondsSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

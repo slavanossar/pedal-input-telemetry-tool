@@ -13,7 +13,7 @@ namespace PedalTelemetry
         public int ClutchAxis { get; set; } = 2; // Default to Z-axis
         public int BrakeAxis { get; set; } = 1; // Default to Y-axis
         public int ThrottleAxis { get; set; } = 0; // Default to X-axis
-        public int TraceSeconds { get; set; } = 10;
+        public int TraceSeconds { get; set; } = 8;
         public Dictionary<string, string> Colors { get; set; } = new Dictionary<string, string>
         {
             { "clutch", "#FF6B6B" },
